@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resume Parser and Job Matcher</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --panel: #fffaf3;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --accent: #0f766e;
+      --accent-dark: #115e59;
+      --border: #d6c7b4;
+      --shadow: 0 20px 45px rgba(44, 62, 80, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(194, 65, 12, 0.1), transparent 26%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    main {
+      width: min(960px, calc(100% - 32px));
+      margin: 40px auto;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 32px 28px 18px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(255, 250, 243, 0.9));
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 4vw, 3.3rem);
+      line-height: 1;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    form {
+      padding: 24px 28px 28px;
+      display: grid;
+      gap: 18px;
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+      font-weight: 700;
+    }
+
+    input[type="file"] {
+      padding: 14px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      background: #fff;
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 20px;
+      font: inherit;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      cursor: pointer;
+      width: fit-content;
+    }
+
+    button:disabled {
+      opacity: 0.7;
+      cursor: progress;
+    }
+
+    .status {
+      min-height: 24px;
+      color: var(--accent-dark);
+      font-weight: 700;
+    }
+
+    pre {
+      margin: 0;
+      padding: 24px 28px 28px;
+      border-top: 1px solid var(--border);
+      background: #17202a;
+      color: #ecfdf5;
+      overflow: auto;
+      min-height: 220px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 640px) {
+      main {
+        width: calc(100% - 20px);
+        margin: 18px auto;
+      }
+
+      .hero,
+      form,
+      pre {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <div class="hero">
+        <h1>Resume Parser and Job Matcher</h1>
+        <p>Upload one resume and one or more job descriptions. The backend uses the same rule-based parsing and matching logic as the CLI project.</p>
+      </div>
+
+      <form id="matcher-form">
+        <label>
+          Resume file (.txt or .pdf)
+          <input id="resume" name="resume" type="file" accept=".txt,.pdf" required>
+        </label>
+
+        <label>
+          Job description files (.txt or .pdf)
+          <input id="jobs" name="jobs" type="file" accept=".txt,.pdf" multiple required>
+        </label>
+
+        <button id="submit-btn" type="submit">Run matcher</button>
+        <div id="status" class="status"></div>
+      </form>
+
+      <pre id="result">Result will appear here.</pre>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("matcher-form");
+    const resumeInput = document.getElementById("resume");
+    const jobsInput = document.getElementById("jobs");
+    const statusEl = document.getElementById("status");
+    const resultEl = document.getElementById("result");
+    const submitBtn = document.getElementById("submit-btn");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!resumeInput.files.length || !jobsInput.files.length) {
+        statusEl.textContent = "Resume and at least one JD file are required.";
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("resume", resumeInput.files[0]);
+
+      for (const file of jobsInput.files) {
+        formData.append("jobs", file);
+      }
+
+      statusEl.textContent = "Processing files...";
+      resultEl.textContent = "";
+      submitBtn.disabled = true;
+
+      try {
+        const response = await fetch("/api/match", {
+          method: "POST",
+          body: formData
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Request failed.");
+        }
+
+        statusEl.textContent = "Completed.";
+        resultEl.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        statusEl.textContent = "Request failed.";
+        resultEl.textContent = error.message;
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
